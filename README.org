@@ -1,0 +1,46 @@
+* hisfantasy
+** motivation
+
+I cant be bothered to type code {projectname}.code-workspace so this
+is wrapper to run code on the workspace in the directory --dir.
+
+** gpt prompt
+
+Make an app that takes --dir (-d for short) and uses '.' as default
+and looks for *.code-workspace in this dir.
+
+Use jessevdk/go-flags for flags.
+
+For example it might find this file:
+/Users/mtm/pdev/taylormonacelli/herfish/herfish.code-workspace
+
+Abort with error if there are more than one code-workspace files in
+this directory.
+
+Run this command code { path } in order to open visual studio code on
+this workspace file.
+
+So for example if this file was found:
+/Users/mtm/pdev/taylormonacelli/herfish/herfish.code-workspace
+
+then the app would run this:
+code /Users/mtm/pdev/taylormonacelli/herfish/herfish.code-workspace
+
+and then exit with code 0.
+
+** usage
+*** example
+
+#+begin_example
+make install
+cd /Users/mtm/pdev/taylormonacelli/eachload
+hisfantasy 
+#+end_example
+
+*** example
+
+#+begin_example
+make install
+hisfantasy --dir /Users/mtm/pdev/taylormonacelli/eachload
+#+end_example
+
