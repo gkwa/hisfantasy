@@ -57,12 +57,7 @@ func getWorkspacePathForDir(dir string) (string, error) {
 	return matches[0], nil
 }
 
-func runCommandForDirs(dryRun bool, dirs ...string) error {
-	cmd, err := buildCommand("code", dirs...)
-	if err != nil {
-		return fmt.Errorf("buildCommand failed: %w", err)
-	}
-
+func runCommand(dryRun bool, cmd *exec.Cmd) error {
 	if dryRun {
 		slog.Debug("command", "dry-run", true, "command", cmd.String())
 	} else {
@@ -78,7 +73,12 @@ func runCommandForDirs(dryRun bool, dirs ...string) error {
 func run() error {
 	slog.Debug("running", "directory list requested", opts.Dirs)
 
-	err := runCommandForDirs(opts.DryRun, opts.Dirs...)
+	cmd, err := buildCommand("code", opts.Dirs...)
+	if err != nil {
+		return fmt.Errorf("buildCommand failed: %w", err)
+	}
+
+	err = runCommand(opts.DryRun, cmd)
 	if err != nil {
 		return fmt.Errorf("runCommandForDir failed: %w", err)
 	}
