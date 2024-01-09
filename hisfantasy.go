@@ -14,7 +14,8 @@ var opts struct {
 	LogFormat string `long:"log-format" choice:"text" choice:"json" default:"text" description:"Log format"`
 	Verbose   []bool `short:"v" long:"verbose" description:"Show verbose debug information, each -v bumps log level"`
 	logLevel  slog.Level
-	Dir       string `short:"d" long:"dir" default:"." description:"Directory to search for *.code-workspace files"`
+	DryRun    bool     `short:"n" long:"dry-run" description:"Dry run: print the command instead of executing it"`
+	Dirs      []string `short:"d" long:"dir" default:"." description:"Directories to search for *.code-workspace files"`
 }
 
 func Execute() int {
@@ -43,31 +44,61 @@ func parseFlags() error {
 	return err
 }
 
-func run() error {
-	matches, err := filepath.Glob(filepath.Join(opts.Dir, "*.code-workspace"))
+func getWorkspacePathForDir(dir string) (string, error) {
+	matches, err := filepath.Glob(filepath.Join(dir, "*.code-workspace"))
 	if err != nil {
-		return fmt.Errorf("glob failed: %w", err)
+		return "", fmt.Errorf("glob failed: %w", err)
 	}
 
 	if len(matches) != 1 {
-		return fmt.Errorf("found %d code-workspace files in %s", len(matches), opts.Dir)
+		return "", fmt.Errorf("found %d code-workspace files in %s", len(matches), dir)
 	}
 
-	workspacePath := matches[0]
+	return matches[0], nil
+}
 
-	err = runCommand("code", workspacePath)
+func runCommandForDirs(dryRun bool, dirs ...string) error {
+	cmd, err := buildCommand("code", dirs...)
 	if err != nil {
-		return fmt.Errorf("code failed: %w", err)
+		return fmt.Errorf("buildCommand failed: %w", err)
+	}
+
+	if dryRun {
+		slog.Debug("command", "dry-run", true, "command", cmd.String())
+	} else {
+		err := cmd.Run()
+		if err != nil {
+			return fmt.Errorf("code failed: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func runCommand(command string, args ...string) error {
-	cmd := exec.Command(command, args...)
+func run() error {
+	slog.Debug("running", "directory list requested", opts.Dirs)
+
+	err := runCommandForDirs(opts.DryRun, opts.Dirs...)
+	if err != nil {
+		return fmt.Errorf("runCommandForDir failed: %w", err)
+	}
+
+	return nil
+}
+
+func buildCommand(command string, dirs ...string) (*exec.Cmd, error) {
+	workspacePaths := make([]string, len(dirs))
+	for _, dir := range dirs {
+		workspacePath, err := getWorkspacePathForDir(dir)
+		if err != nil {
+			return nil, fmt.Errorf("getWorkspacePathForDir failed: %w", err)
+		}
+		workspacePaths = append(workspacePaths, workspacePath)
+	}
+
+	cmd := exec.Command(command, workspacePaths...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	slog.Debug("running command", "command", cmd.String())
-	return cmd.Run()
+	return cmd, nil
 }
